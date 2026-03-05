@@ -16,7 +16,10 @@ import torch
 from torch import nn, Tensor
 from torch.distributions import Uniform
 from torch.nn import functional as F
-from torchaudio.transforms import Resample as TorchAudioResample
+try:
+    from torchaudio.transforms import Resample as TorchAudioResample
+except ImportError:
+    TorchAudioResample = None
 
 
 class Crop(nn.Module):
@@ -257,6 +260,8 @@ class Resample(nn.Module):
         if self.interpolation == "nearest":
             data = self.resample_nearest(data, rate)
         elif self.interpolation == "linear":
+            if TorchAudioResample is None:
+                raise ImportError("torchaudio is required for linear interpolation resampling.")
             sampling_rate = 32000
             tchaudio_resample = TorchAudioResample(sampling_rate, int(sampling_rate * rate))
             data = tchaudio_resample(data)

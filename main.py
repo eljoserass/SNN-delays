@@ -1,3 +1,5 @@
+import argparse
+
 from datasets import SHD_dataloaders, SSC_dataloaders, GSC_dataloaders
 from config import Config
 from snn_delays import SnnDelays
@@ -5,10 +7,46 @@ import torch
 from snn import SNN
 import utils
 
+
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--sigma_drop",
+        type=float,
+        default=None,
+        help="Stddev of Gaussian noise added to delay positions during training.",
+    )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=None,
+        help="Random seed for this run.",
+    )
+    parser.add_argument(
+        "--run_name",
+        type=str,
+        default=None,
+        help="Optional wandb/local run name prefix.",
+    )
+    args, _ = parser.parse_known_args()
+    return args
+
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"\n=====> Device = {device} \n\n")
 
+args = parse_args()
 config = Config()
+if args.sigma_drop is not None:
+    if args.sigma_drop < 0:
+        raise ValueError("--sigma_drop must be >= 0.0")
+    config.sigma_drop = args.sigma_drop
+if args.seed is not None:
+    config.seed = args.seed
+if args.run_name is not None:
+    config.run_name = args.run_name
+if hasattr(config, "refresh_run_metadata"):
+    config.refresh_run_metadata()
 
 if config.model_type == 'snn':
     model = SNN(config).to(device)
@@ -21,6 +59,8 @@ if config.model_type == 'snn_delays_lr0':
 
 print(f"===> Dataset    = {config.dataset}")
 print(f"===> Model type = {config.model_type}")
+print(f"===> Seed       = {config.seed}")
+print(f"===> Sigma drop = {config.sigma_drop}")
 print(f"===> Model size = {utils.count_parameters(model)}\n\n")
 
 

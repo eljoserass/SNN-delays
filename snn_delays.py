@@ -8,6 +8,7 @@ from spikingjelly.activation_based import functional
 from DCLS.construct.modules import Dcls1d
 
 from model import Model
+from delay_dropout import forward_with_delay_dropout
 from utils import set_seed
 
 
@@ -203,14 +204,15 @@ class SnnDelays(Model):
 
 
     def forward(self, x):
-        
         for block_id in range(self.config.n_hidden_layers):
             # x is permuted: (time, batch, neurons) => (batch, neurons, time)  in order to be processed by the convolution
             x = x.permute(1,2,0)
             x = F.pad(x, (self.config.left_padding, self.config.right_padding), 'constant', 0)  # we use padding for the delays kernel
 
             # we use convolution of delay kernels
-            x = self.blocks[block_id][0][0](x)
+            x = forward_with_delay_dropout(
+                self.blocks[block_id][0][0], x, self.training, self.config.sigma_drop
+            )
 
             # We permute again: (batch, neurons, time) => (time, batch, neurons) in order to be processed by batchnorm or Lif
             x = x.permute(2,0,1)
@@ -243,7 +245,9 @@ class SnnDelays(Model):
         x = F.pad(x, (self.config.left_padding, self.config.right_padding), 'constant', 0)
         
         # Apply final layer
-        out = self.blocks[-1][0][0](x)
+        out = forward_with_delay_dropout(
+            self.blocks[-1][0][0], x, self.training, self.config.sigma_drop
+        )
 
         # permute out: (batch, neurons, time) => (time, batch, neurons)  For final spiking neuron filter
         out = out.permute(2,0,1)

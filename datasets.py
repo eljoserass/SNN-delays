@@ -1,5 +1,7 @@
 from utils import set_seed
 
+import os
+import shutil
 import numpy as np
 
 from torch.utils.data import DataLoader
@@ -9,16 +11,27 @@ from typing import Callable, Optional
 import torchvision.transforms as transforms
 
 from spikingjelly.datasets.shd import SpikingHeidelbergDigits
-from spikingjelly.datasets.shd import SpikingSpeechCommands
 from spikingjelly.datasets import pad_sequence_collate
+try:
+    from spikingjelly.datasets.shd import SpikingSpeechCommands
+except ImportError:
+    SpikingSpeechCommands = None
 
 import torch
-import torchaudio
-from torchaudio.transforms import Spectrogram, MelScale, AmplitudeToDB, Resample
-from torchaudio.datasets.speechcommands import SPEECHCOMMANDS
 from torchvision import transforms
 from torch.utils.data import Dataset
 import augmentations
+try:
+    import torchaudio
+    from torchaudio.transforms import Spectrogram, MelScale, AmplitudeToDB, Resample
+    from torchaudio.datasets.speechcommands import SPEECHCOMMANDS
+except ImportError:
+    torchaudio = None
+    Spectrogram = None
+    MelScale = None
+    AmplitudeToDB = None
+    Resample = None
+    SPEECHCOMMANDS = None
 
 
 class RNoise(object):
@@ -104,6 +117,15 @@ class Augs(object):
 
 
 def SHD_dataloaders(config):
+  extract_root = os.path.join(config.datasets_path, 'extract')
+  expected_h5 = ('shd_train.h5', 'shd_test.h5')
+  os.makedirs(config.datasets_path, exist_ok=True)
+  if os.path.exists(extract_root):
+    missing_h5 = [f for f in expected_h5 if not os.path.exists(os.path.join(extract_root, f))]
+    if missing_h5:
+      print(f"Incomplete SHD extract found (missing: {missing_h5}). Rebuilding extract directory.")
+      shutil.rmtree(extract_root)
+
   set_seed(config.seed)
 
   train_dataset = BinnedSpikingHeidelbergDigits(config.datasets_path, config.n_bins, train=True, data_type='frame', duration=config.time_step)
@@ -135,6 +157,8 @@ def SSC_dataloaders(config):
   return train_loader, valid_loader, test_loader
 
 def GSC_dataloaders(config):
+  if torchaudio is None:
+    raise ImportError("torchaudio is required for GSC dataloaders.")
   set_seed(config.seed)
 
   train_dataset = GSpeechCommands(config.datasets_path, 'training', transform=build_transform(False), target_transform=target_transform)
@@ -208,65 +232,74 @@ class BinnedSpikingHeidelbergDigits(SpikingHeidelbergDigits):
 
 
 
-class BinnedSpikingSpeechCommands(SpikingSpeechCommands):
-    def __init__(
-            self,
-            root: str,
-            n_bins: int,
-            split: str = 'train',
-            data_type: str = 'event',
-            frames_number: int = None,
-            split_by: str = None,
-            duration: int = None,
-            custom_integrate_function: Callable = None,
-            custom_integrated_frames_dir_name: str = None,
-            transform: Optional[Callable] = None,
-            target_transform: Optional[Callable] = None,
-    ) -> None:
-        """
-        The Spiking Speech Commands (SSC) dataset, which is proposed by `The Heidelberg Spiking Data Sets for the Systematic Evaluation of Spiking Neural Networks <https://doi.org/10.1109/TNNLS.2020.3044364>`_.
+if SpikingSpeechCommands is not None:
+    class BinnedSpikingSpeechCommands(SpikingSpeechCommands):
+        def __init__(
+                self,
+                root: str,
+                n_bins: int,
+                split: str = 'train',
+                data_type: str = 'event',
+                frames_number: int = None,
+                split_by: str = None,
+                duration: int = None,
+                custom_integrate_function: Callable = None,
+                custom_integrated_frames_dir_name: str = None,
+                transform: Optional[Callable] = None,
+                target_transform: Optional[Callable] = None,
+        ) -> None:
+            """
+            The Spiking Speech Commands (SSC) dataset, which is proposed by `The Heidelberg Spiking Data Sets for the Systematic Evaluation of Spiking Neural Networks <https://doi.org/10.1109/TNNLS.2020.3044364>`_.
 
-        Refer to :class:`spikingjelly.datasets.NeuromorphicDatasetFolder` for more details about params information.
+            Refer to :class:`spikingjelly.datasets.NeuromorphicDatasetFolder` for more details about params information.
 
-        .. admonition:: Note
-            :class: note
+            .. admonition:: Note
+                :class: note
 
-            Events in this dataset are in the format of ``(x, t)`` rather than ``(x, y, t, p)``. Thus, this dataset is not inherited from :class:`spikingjelly.datasets.NeuromorphicDatasetFolder` directly. But their procedures are similar.
+                Events in this dataset are in the format of ``(x, t)`` rather than ``(x, y, t, p)``. Thus, this dataset is not inherited from :class:`spikingjelly.datasets.NeuromorphicDatasetFolder` directly. But their procedures are similar.
 
-        :class:`spikingjelly.datasets.shd.custom_integrate_function_example` is an example of ``custom_integrate_function``, which is similar to the cunstom function for DVS Gesture in the ``Neuromorphic Datasets Processing`` tutorial.
-        """
-        super().__init__(root, split, data_type, frames_number, split_by, duration, custom_integrate_function, custom_integrated_frames_dir_name, transform, target_transform)
-        self.n_bins = n_bins
+            :class:`spikingjelly.datasets.shd.custom_integrate_function_example` is an example of ``custom_integrate_function``, which is similar to the cunstom function for DVS Gesture in the ``Neuromorphic Datasets Processing`` tutorial.
+            """
+            super().__init__(root, split, data_type, frames_number, split_by, duration, custom_integrate_function, custom_integrated_frames_dir_name, transform, target_transform)
+            self.n_bins = n_bins
 
-    def __getitem__(self, i: int):
-        if self.data_type == 'event':
-            events = {'t': self.h5_file['spikes']['times'][i], 'x': self.h5_file['spikes']['units'][i]}
-            label = self.h5_file['labels'][i]
-            if self.transform is not None:
-                events = self.transform(events)
-            if self.target_transform is not None:
-                label = self.target_transform(label)
+        def __getitem__(self, i: int):
+            if self.data_type == 'event':
+                events = {'t': self.h5_file['spikes']['times'][i], 'x': self.h5_file['spikes']['units'][i]}
+                label = self.h5_file['labels'][i]
+                if self.transform is not None:
+                    events = self.transform(events)
+                if self.target_transform is not None:
+                    label = self.target_transform(label)
 
-            return events, label
+                return events, label
 
-        elif self.data_type == 'frame':
-            frames = np.load(self.frames_path[i], allow_pickle=True)['frames'].astype(np.float32)
-            label = self.frames_label[i]
+            elif self.data_type == 'frame':
+                frames = np.load(self.frames_path[i], allow_pickle=True)['frames'].astype(np.float32)
+                label = self.frames_label[i]
 
-            binned_len = frames.shape[1]//self.n_bins
-            binned_frames = np.zeros((frames.shape[0], binned_len))
-            for i in range(binned_len):
-                binned_frames[:,i] = frames[:, self.n_bins*i : self.n_bins*(i+1)].sum(axis=1)
+                binned_len = frames.shape[1]//self.n_bins
+                binned_frames = np.zeros((frames.shape[0], binned_len))
+                for i in range(binned_len):
+                    binned_frames[:,i] = frames[:, self.n_bins*i : self.n_bins*(i+1)].sum(axis=1)
 
-            if self.transform is not None:
-                binned_frames = self.transform(binned_frames)
-            if self.target_transform is not None:
-                label = self.target_transform(label)
+                if self.transform is not None:
+                    binned_frames = self.transform(binned_frames)
+                if self.target_transform is not None:
+                    label = self.target_transform(label)
 
-            return binned_frames, label
+                return binned_frames, label
+else:
+    class BinnedSpikingSpeechCommands:
+        def __init__(self, *args, **kwargs):
+            raise ImportError(
+                "SpikingSpeechCommands is unavailable in installed spikingjelly version."
+            )
 
 
 def build_transform(is_train):
+    if torchaudio is None:
+        raise ImportError("torchaudio is required for GSC transforms.")
     sample_rate=16000
     window_size=256
     hop_length=80
@@ -302,6 +335,8 @@ target_transform = lambda word : torch.tensor(labels.index(word))
 
 class GSpeechCommands(Dataset):
     def __init__(self, root, split_name, transform=None, target_transform=None, download=True):
+        if SPEECHCOMMANDS is None:
+            raise ImportError("torchaudio is required for GSpeechCommands.")
 
         self.split_name = split_name
         self.transform = transform

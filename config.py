@@ -9,7 +9,7 @@ class Config:
 
     # dataset could be set to either 'shd', 'ssc' or 'gsc', change datasets_path accordingly.
     dataset = 'shd'                    
-    datasets_path = 'Datasets/SHD'
+    datasets_path = 'Datasets'
 
     seed = 0
 
@@ -95,6 +95,7 @@ class Config:
     # For constant sigma without the decreasing policy, set model_type == 'snn_delays' and sigInit = 0.23 and final_epoch = 0
     sigInit = max_delay // 2        if model_type == 'snn_delays' else 0
     final_epoch = (1*epochs)//4     if model_type == 'snn_delays' else 0
+    sigma_drop = 0.0
 
 
     left_padding = max_delay-1
@@ -138,14 +139,14 @@ class Config:
     #############################################
     # If use_wand is set to True, specify your wandb api token in wandb_token and the project and run names. 
 
-    use_wandb = False
+    use_wandb = True
     wandb_token = 'your_wandb_token'
     wandb_project_name = 'Wandb Project Name'
 
     run_name = 'Wandb Run Name'
 
 
-    run_info = f'||{model_type}||{dataset}||{time_step}ms||bins={n_bins}'
+    run_info = f'||{model_type}||{dataset}||{time_step}ms||bins={n_bins}||sigma_drop={sigma_drop:g}'
 
     wandb_run_name = run_name + f'||seed={seed}' + run_info
     wandb_group_name = run_name + run_info
@@ -159,3 +160,22 @@ class Config:
     wandb_group_name_finetuning = wandb_group_name.replace('(Pre-train)', '(Fine-tune)')
 
     save_model_path_finetuning = f'{wandb_run_name_finetuning}.pt'
+
+    def refresh_run_metadata(self):
+        self.run_info = (
+            f'||{self.model_type}||{self.dataset}||{self.time_step}ms'
+            f'||bins={self.n_bins}||sigma_drop={self.sigma_drop:g}'
+        )
+        self.wandb_run_name = self.run_name + f'||seed={self.seed}' + self.run_info
+        self.wandb_group_name = self.run_name + self.run_info
+        self.save_model_path = f'{self.wandb_run_name}_REPL.pt'
+        self.wandb_run_name_finetuning = self.wandb_run_name.replace(
+            '(Pre-train)',
+            f'(Fine-tune_lr={self.lr_w_finetuning:.1e}->{self.max_lr_w_finetuning:.1e}'
+            f'_dropout={self.dropout_p_finetuning}_{self.spiking_neuron_type_finetuning}'
+            f'_SS={self.stateful_synapse_learnable_finetuning})'
+        )
+        self.wandb_group_name_finetuning = self.wandb_group_name.replace(
+            '(Pre-train)', '(Fine-tune)'
+        )
+        self.save_model_path_finetuning = f'{self.wandb_run_name_finetuning}.pt'

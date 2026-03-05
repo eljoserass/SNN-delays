@@ -9,7 +9,7 @@ class Config:
 
     # dataset could be set to either 'shd', 'ssc' or 'gsc', change datasets_path accordingly.
     dataset = 'shd'                    
-    datasets_path = 'Datasets/SHD'
+    datasets_path = 'Datasets'
 
     seed = 0
 
@@ -95,6 +95,7 @@ class Config:
     # For constant sigma without the decreasing policy, set model_type == 'snn_delays' and sigInit = 0.23 and final_epoch = 0
     sigInit = max_delay // 2        if model_type == 'snn_delays' else 0
     final_epoch = (1*epochs)//4     if model_type == 'snn_delays' else 0
+    sigma_drop = 0.0
 
 
     left_padding = max_delay-1
@@ -138,7 +139,7 @@ class Config:
     #############################################
     # If use_wand is set to True, specify your wandb api token in wandb_token and the project and run names. 
 
-    use_wandb = False
+    use_wandb = True
     wandb_token = 'your_wandb_token'
     wandb_project_name = 'Wandb Project Name'
 
