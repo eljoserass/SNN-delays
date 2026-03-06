@@ -28,6 +28,19 @@ def parse_args():
         default=None,
         help="Optional wandb/local run name prefix.",
     )
+    parser.add_argument(
+        "--dataset",
+        type=str,
+        choices=["shd", "ssc", "gsc"],
+        default=None,
+        help="Dataset to train on.",
+    )
+    parser.add_argument(
+        "--sparsity_p",
+        type=float,
+        default=None,
+        help="Mask probability for sparse connectivity (0.0 = fully connected).",
+    )
     args, _ = parser.parse_known_args()
     return args
 
@@ -41,6 +54,13 @@ if args.sigma_drop is not None:
     if args.sigma_drop < 0:
         raise ValueError("--sigma_drop must be >= 0.0")
     config.sigma_drop = args.sigma_drop
+if args.dataset is not None:
+    config.dataset = args.dataset
+    config.n_outputs = 20 if config.dataset == "shd" else 35
+if args.sparsity_p is not None:
+    if not (0.0 <= args.sparsity_p <= 1.0):
+        raise ValueError("--sparsity_p must be in [0.0, 1.0]")
+    config.sparsity_p = args.sparsity_p
 if args.seed is not None:
     config.seed = args.seed
 if args.run_name is not None:
@@ -61,6 +81,7 @@ print(f"===> Dataset    = {config.dataset}")
 print(f"===> Model type = {config.model_type}")
 print(f"===> Seed       = {config.seed}")
 print(f"===> Sigma drop = {config.sigma_drop}")
+print(f"===> Sparsity p = {config.sparsity_p}")
 print(f"===> Model size = {utils.count_parameters(model)}\n\n")
 
 

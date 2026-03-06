@@ -146,7 +146,10 @@ class Config:
     run_name = 'Wandb Run Name'
 
 
-    run_info = f'||{model_type}||{dataset}||{time_step}ms||bins={n_bins}||sigma_drop={sigma_drop:g}'
+    run_info = (
+        f'||{model_type}||{dataset}||{time_step}ms||bins={n_bins}'
+        f'||sigma_drop={sigma_drop:g}||sparsity_p={sparsity_p:g}'
+    )
 
     wandb_run_name = run_name + f'||seed={seed}' + run_info
     wandb_group_name = run_name + run_info
@@ -165,6 +168,7 @@ class Config:
         self.run_info = (
             f'||{self.model_type}||{self.dataset}||{self.time_step}ms'
             f'||bins={self.n_bins}||sigma_drop={self.sigma_drop:g}'
+            f'||sparsity_p={self.sparsity_p:g}'
         )
         self.wandb_run_name = self.run_name + f'||seed={self.seed}' + self.run_info
         self.wandb_group_name = self.run_name + self.run_info
