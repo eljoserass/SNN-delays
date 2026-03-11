@@ -116,10 +116,21 @@ class Augs(object):
 
 
 
+def _resolve_dataset_root(config, dataset_name):
+  dataset_root = config.datasets_path
+  base_name = os.path.basename(os.path.normpath(dataset_root)).lower()
+  if base_name == dataset_name.lower():
+    return dataset_root
+  if base_name == 'datasets':
+    return os.path.join(dataset_root, dataset_name.upper())
+  return dataset_root
+
+
 def SHD_dataloaders(config):
-  extract_root = os.path.join(config.datasets_path, 'extract')
+  dataset_root = _resolve_dataset_root(config, 'shd')
+  extract_root = os.path.join(dataset_root, 'extract')
   expected_h5 = ('shd_train.h5', 'shd_test.h5')
-  os.makedirs(config.datasets_path, exist_ok=True)
+  os.makedirs(dataset_root, exist_ok=True)
   if os.path.exists(extract_root):
     missing_h5 = [f for f in expected_h5 if not os.path.exists(os.path.join(extract_root, f))]
     if missing_h5:
@@ -128,8 +139,10 @@ def SHD_dataloaders(config):
 
   set_seed(config.seed)
 
-  train_dataset = BinnedSpikingHeidelbergDigits(config.datasets_path, config.n_bins, train=True, data_type='frame', duration=config.time_step)
-  test_dataset= BinnedSpikingHeidelbergDigits(config.datasets_path, config.n_bins, train=False, data_type='frame', duration=config.time_step)
+  print(f"===> SHD data root = {dataset_root}")
+
+  train_dataset = BinnedSpikingHeidelbergDigits(dataset_root, config.n_bins, train=True, data_type='frame', duration=config.time_step)
+  test_dataset= BinnedSpikingHeidelbergDigits(dataset_root, config.n_bins, train=False, data_type='frame', duration=config.time_step)
 
   #train_dataset, valid_dataset = random_split(train_dataset, [0.8, 0.2])
 
@@ -143,11 +156,15 @@ def SHD_dataloaders(config):
 
 
 def SSC_dataloaders(config):
+  dataset_root = _resolve_dataset_root(config, 'ssc')
   set_seed(config.seed)
 
-  train_dataset = BinnedSpikingSpeechCommands(config.datasets_path, config.n_bins, split='train', data_type='frame', duration=config.time_step)
-  valid_dataset = BinnedSpikingSpeechCommands(config.datasets_path, config.n_bins, split='valid', data_type='frame', duration=config.time_step)
-  test_dataset = BinnedSpikingSpeechCommands(config.datasets_path, config.n_bins, split='test', data_type='frame', duration=config.time_step)
+  os.makedirs(dataset_root, exist_ok=True)
+  print(f"===> SSC data root = {dataset_root}")
+
+  train_dataset = BinnedSpikingSpeechCommands(dataset_root, config.n_bins, split='train', data_type='frame', duration=config.time_step)
+  valid_dataset = BinnedSpikingSpeechCommands(dataset_root, config.n_bins, split='valid', data_type='frame', duration=config.time_step)
+  test_dataset = BinnedSpikingSpeechCommands(dataset_root, config.n_bins, split='test', data_type='frame', duration=config.time_step)
 
 
   train_loader = DataLoader(train_dataset, collate_fn=pad_sequence_collate, batch_size=config.batch_size, shuffle=True, num_workers=4)
@@ -159,11 +176,15 @@ def SSC_dataloaders(config):
 def GSC_dataloaders(config):
   if torchaudio is None:
     raise ImportError("torchaudio is required for GSC dataloaders.")
+  dataset_root = _resolve_dataset_root(config, 'gsc')
   set_seed(config.seed)
 
-  train_dataset = GSpeechCommands(config.datasets_path, 'training', transform=build_transform(False), target_transform=target_transform)
-  valid_dataset = GSpeechCommands(config.datasets_path, 'validation', transform=build_transform(False), target_transform=target_transform)
-  test_dataset = GSpeechCommands(config.datasets_path, 'testing', transform=build_transform(False), target_transform=target_transform)
+  os.makedirs(dataset_root, exist_ok=True)
+  print(f"===> GSC data root = {dataset_root}")
+
+  train_dataset = GSpeechCommands(dataset_root, 'training', transform=build_transform(False), target_transform=target_transform)
+  valid_dataset = GSpeechCommands(dataset_root, 'validation', transform=build_transform(False), target_transform=target_transform)
+  test_dataset = GSpeechCommands(dataset_root, 'testing', transform=build_transform(False), target_transform=target_transform)
 
 
   train_loader = DataLoader(train_dataset, batch_size=config.batch_size, shuffle=True, num_workers=4)
@@ -202,6 +223,9 @@ class BinnedSpikingHeidelbergDigits(SpikingHeidelbergDigits):
         """
         super().__init__(root, train, data_type, frames_number, split_by, duration, custom_integrate_function, custom_integrated_frames_dir_name, transform, target_transform)
         self.n_bins = n_bins
+        self.data_type = getattr(self, 'data_type', data_type)
+        self.transform = getattr(self, 'transform', transform)
+        self.target_transform = getattr(self, 'target_transform', target_transform)
 
     def __getitem__(self, i: int):
         if self.data_type == 'event':
@@ -262,6 +286,9 @@ if SpikingSpeechCommands is not None:
             """
             super().__init__(root, split, data_type, frames_number, split_by, duration, custom_integrate_function, custom_integrated_frames_dir_name, transform, target_transform)
             self.n_bins = n_bins
+            self.data_type = getattr(self, 'data_type', data_type)
+            self.transform = getattr(self, 'transform', transform)
+            self.target_transform = getattr(self, 'target_transform', target_transform)
 
         def __getitem__(self, i: int):
             if self.data_type == 'event':

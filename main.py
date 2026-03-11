@@ -41,6 +41,12 @@ def parse_args():
         default=None,
         help="Mask probability for sparse connectivity (0.0 = fully connected).",
     )
+    parser.add_argument(
+        "--datasets_path",
+        type=str,
+        default=None,
+        help="Dataset root directory. If set to 'Datasets', SHD/SSC/GSC use dataset-specific subdirectories automatically.",
+    )
     args, _ = parser.parse_known_args()
     return args
 
@@ -61,6 +67,8 @@ if args.sparsity_p is not None:
     if not (0.0 <= args.sparsity_p <= 1.0):
         raise ValueError("--sparsity_p must be in [0.0, 1.0]")
     config.sparsity_p = args.sparsity_p
+if args.datasets_path is not None:
+    config.datasets_path = args.datasets_path
 if args.seed is not None:
     config.seed = args.seed
 if args.run_name is not None:
@@ -82,6 +90,7 @@ print(f"===> Model type = {config.model_type}")
 print(f"===> Seed       = {config.seed}")
 print(f"===> Sigma drop = {config.sigma_drop}")
 print(f"===> Sparsity p = {config.sparsity_p}")
+print(f"===> Data root  = {config.datasets_path}")
 print(f"===> Model size = {utils.count_parameters(model)}\n\n")
 
 
