@@ -46,11 +46,29 @@ EOF
 }
 
 parent_training_pids() {
-  ps -eo pid=,ppid=,args= | awk '$3 ~ /python$/ && $4 == "main.py" && $2 != 1 {print $1}'
+  ps -eo pid=,ppid=,args= | awk '
+    $3 ~ /python$/ && $4 == "main.py" {
+      pid=$1
+      ppid=$2
+      cmd[pid]=$0
+      parent[pid]=ppid
+    }
+    END {
+      for (pid in cmd) {
+        if (!(parent[pid] in cmd)) {
+          print pid
+        }
+      }
+    }
+  ' | sort -n
 }
 
 print_parent_processes() {
-  ps -eo pid,ppid,args | awk '$3 ~ /python$/ && $4 == "main.py" && $2 != 1 {print}'
+  local pid
+  while read -r pid; do
+    [[ -n "${pid}" ]] || continue
+    ps -p "${pid}" -o pid,ppid,args --no-headers
+  done < <(parent_training_pids)
 }
 
 inspect_live() {
@@ -58,11 +76,12 @@ inspect_live() {
   print_parent_processes || true
   echo
 
-  parent_pid="$(parent_training_pids | head -n 1 || true)"
-  if [[ -n "${parent_pid}" ]]; then
+  while read -r parent_pid; do
+    [[ -n "${parent_pid}" ]] || continue
     echo "=== Workers for parent PID ${parent_pid}"
     ps --ppid "${parent_pid}" -o pid,ppid,args || true
-  fi
+    echo
+  done < <(parent_training_pids)
   echo
 
   if [[ -f logs/shd_baseline_seed0.log ]]; then
@@ -113,6 +132,13 @@ wait_for_slot() {
   local max_parallel="$1"
 
   while true; do
+    local total_parents
+    total_parents="$(parent_training_pids | wc -l)"
+    if [[ "${total_parents}" -ge "${max_parallel}" ]]; then
+      sleep 20
+      continue
+    fi
+
     local still_running=()
     local pid
     for pid in "${ACTIVE_PIDS[@]:-}"; do

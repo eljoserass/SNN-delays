@@ -119,11 +119,22 @@ class Augs(object):
 def _resolve_dataset_root(config, dataset_name):
   dataset_root = config.datasets_path
   base_name = os.path.basename(os.path.normpath(dataset_root)).lower()
+  resolved = dataset_root
   if base_name == dataset_name.lower():
-    return dataset_root
-  if base_name == 'datasets':
-    return os.path.join(dataset_root, dataset_name.upper())
-  return dataset_root
+    resolved = dataset_root
+  elif base_name == 'datasets':
+    resolved = os.path.join(dataset_root, dataset_name.upper())
+  return os.path.abspath(resolved)
+
+
+def _contains_frame_files(root_dir):
+  if not os.path.exists(root_dir):
+    return False
+  for _, _, files in os.walk(root_dir):
+    for f in files:
+      if f.endswith('.npz') or f.endswith('.npy'):
+        return True
+  return False
 
 
 def SHD_dataloaders(config):
@@ -161,6 +172,33 @@ def SSC_dataloaders(config):
 
   os.makedirs(dataset_root, exist_ok=True)
   print(f"===> SSC data root = {dataset_root}")
+
+  extract_root = os.path.join(dataset_root, 'extract')
+  expected_h5 = ('ssc_train.h5', 'ssc_valid.h5', 'ssc_test.h5')
+  if os.path.exists(extract_root):
+    missing_h5 = [f for f in expected_h5 if not os.path.exists(os.path.join(extract_root, f))]
+    if missing_h5:
+      print(f"Incomplete SSC extract found (missing: {missing_h5}). Rebuilding extract directory.")
+      shutil.rmtree(extract_root)
+
+  events_root = os.path.join(dataset_root, 'events_h5')
+  if os.path.exists(events_root):
+    missing_events = [f for f in expected_h5 if not os.path.exists(os.path.join(events_root, f))]
+    if missing_events:
+      print(f"Incomplete SSC events_h5 found (missing: {missing_events}). Rebuilding events_h5 directory.")
+      shutil.rmtree(events_root)
+
+  frames_root = os.path.join(dataset_root, f'duration_{config.time_step}')
+  expected_splits = ('train', 'valid', 'test')
+  if os.path.exists(frames_root):
+    missing_splits = [s for s in expected_splits if not os.path.isdir(os.path.join(frames_root, s))]
+    empty_splits = [s for s in expected_splits if os.path.isdir(os.path.join(frames_root, s)) and not _contains_frame_files(os.path.join(frames_root, s))]
+    if missing_splits or empty_splits:
+      print(
+        f"Incomplete SSC frames found in {frames_root}. "
+        f"Missing splits: {missing_splits}, empty splits: {empty_splits}. Rebuilding frames directory."
+      )
+      shutil.rmtree(frames_root)
 
   train_dataset = BinnedSpikingSpeechCommands(dataset_root, config.n_bins, split='train', data_type='frame', duration=config.time_step)
   valid_dataset = BinnedSpikingSpeechCommands(dataset_root, config.n_bins, split='valid', data_type='frame', duration=config.time_step)
@@ -221,7 +259,18 @@ class BinnedSpikingHeidelbergDigits(SpikingHeidelbergDigits):
 
         :class:`spikingjelly.datasets.shd.custom_integrate_function_example` is an example of ``custom_integrate_function``, which is similar to the cunstom function for DVS Gesture in the ``Neuromorphic Datasets Processing`` tutorial.
         """
-        super().__init__(root, train, data_type, frames_number, split_by, duration, custom_integrate_function, custom_integrated_frames_dir_name, transform, target_transform)
+        super().__init__(
+            root=root,
+            train=train,
+            data_type=data_type,
+            frames_number=frames_number,
+            split_by=split_by,
+            duration=duration,
+            custom_integrate_function=custom_integrate_function,
+            custom_integrated_frames_dir_name=custom_integrated_frames_dir_name,
+            transform=transform,
+            target_transform=target_transform,
+        )
         self.n_bins = n_bins
         self.data_type = getattr(self, 'data_type', data_type)
         self.transform = getattr(self, 'transform', transform)
@@ -284,11 +333,32 @@ if SpikingSpeechCommands is not None:
 
             :class:`spikingjelly.datasets.shd.custom_integrate_function_example` is an example of ``custom_integrate_function``, which is similar to the cunstom function for DVS Gesture in the ``Neuromorphic Datasets Processing`` tutorial.
             """
-            super().__init__(root, split, data_type, frames_number, split_by, duration, custom_integrate_function, custom_integrated_frames_dir_name, transform, target_transform)
+            super().__init__(
+                root=root,
+                split=split,
+                data_type=data_type,
+                frames_number=frames_number,
+                split_by=split_by,
+                duration=duration,
+                custom_integrate_function=custom_integrate_function,
+                custom_integrated_frames_dir_name=custom_integrated_frames_dir_name,
+                transform=transform,
+                target_transform=target_transform,
+            )
             self.n_bins = n_bins
             self.data_type = getattr(self, 'data_type', data_type)
             self.transform = getattr(self, 'transform', transform)
             self.target_transform = getattr(self, 'target_transform', target_transform)
+
+        @classmethod
+        def resource_url_md5(cls):
+            # Some SpikingJelly revisions map SSC to SHD resources by mistake.
+            # Override resources here so SSC always downloads the correct files.
+            return [
+                ('ssc_train.h5.zip', 'https://zenkelab.org/datasets/ssc_train.h5.zip', 'd102be95e7144fcc0553d1f45ba94170'),
+                ('ssc_valid.h5.zip', 'https://zenkelab.org/datasets/ssc_valid.h5.zip', 'b4eee3516a4a90dd0c71a6ac23a8ae43'),
+                ('ssc_test.h5.zip', 'https://zenkelab.org/datasets/ssc_test.h5.zip', 'a35ff1e9cffdd02a20eb850c17c37748'),
+            ]
 
         def __getitem__(self, i: int):
             if self.data_type == 'event':
