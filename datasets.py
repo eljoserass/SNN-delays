@@ -138,14 +138,15 @@ def _contains_frame_files(root_dir):
   return False
 
 
-def _to_numpy_frames(frames):
+def _to_numpy_frames(frames, n_bins):
   if isinstance(frames, torch.Tensor):
     frames = frames.detach().cpu().numpy()
   frames = np.asarray(frames, dtype=np.float32)
   if frames.ndim != 2:
     raise ValueError(f'Expected 2D frames, got shape={frames.shape}')
-  # Some loaders return (time, neurons) while this code expects (neurons, time).
-  if frames.shape[0] != 700 and frames.shape[1] == 700:
+  # Keep axis-1 as the binned axis whenever possible. If only axis-0 is compatible
+  # with n_bins, transpose for older loader layouts.
+  if frames.shape[1] % n_bins != 0 and frames.shape[0] % n_bins == 0:
     frames = frames.T
   return frames
 
@@ -328,7 +329,7 @@ class BinnedSpikingHeidelbergDigits(SpikingHeidelbergDigits):
                 frames, label = super().__getitem__(i)
                 apply_local_transform = False
 
-            frames = _to_numpy_frames(frames)
+            frames = _to_numpy_frames(frames, self.n_bins)
             binned_frames = _bin_frames(frames, self.n_bins)
 
             if apply_local_transform:
@@ -427,7 +428,7 @@ if SpikingSpeechCommands is not None:
                     frames, label = super().__getitem__(i)
                     apply_local_transform = False
 
-                frames = _to_numpy_frames(frames)
+                frames = _to_numpy_frames(frames, self.n_bins)
                 binned_frames = _bin_frames(frames, self.n_bins)
 
                 if apply_local_transform:
