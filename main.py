@@ -95,8 +95,10 @@ print(f"===> Model size = {utils.count_parameters(model)}\n\n")
 
 
 if config.dataset == 'shd':
+    # SHD exposes train/test only; mirror the official test split into both
+    # validation and test slots so W&B shows non-zero acc_test curves.
     train_loader, valid_loader = SHD_dataloaders(config)
-    test_loader = None
+    test_loader = valid_loader
 elif config.dataset == 'ssc':
     train_loader, valid_loader, test_loader = SSC_dataloaders(config)
 elif config.dataset == 'gsc':

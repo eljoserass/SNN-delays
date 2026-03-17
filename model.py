@@ -5,7 +5,6 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 
-from config import Config
 from utils import set_seed
 from datasets import Augs
 from tqdm import tqdm
@@ -176,10 +175,20 @@ class Model(nn.Module):
 
         if self.config.use_wandb:
 
-            cfg = {k:v for k,v in dict(vars(Config)).items() if '__' not in k}
+            cfg = {}
+            for k in dir(self.config):
+                if k.startswith('_'):
+                    continue
+                v = getattr(self.config, k)
+                if callable(v):
+                    continue
+                cfg[k] = v
 
-            if self.config.wandb_token and self.config.wandb_token != 'your_wandb_token':
-                wandb.login(key=self.config.wandb_token)
+            wandb_key = self.config.wandb_token
+            if not wandb_key or wandb_key == 'your_wandb_token':
+                wandb_key = os.environ.get('WANDB_API_KEY') or os.environ.get('WANBD_API_KEY')
+            if wandb_key:
+                wandb.login(key=wandb_key)
 
             wandb.init(
                 project= self.config.wandb_project_name,

@@ -3,6 +3,7 @@ from utils import set_seed
 import os
 import shutil
 import numpy as np
+from pathlib import Path
 
 from torch.utils.data import DataLoader
 from torch.utils.data import random_split
@@ -135,6 +136,26 @@ def _contains_frame_files(root_dir):
       if f.endswith('.npz') or f.endswith('.npy'):
         return True
   return False
+
+
+def _to_numpy_frames(frames):
+  if isinstance(frames, torch.Tensor):
+    frames = frames.detach().cpu().numpy()
+  frames = np.asarray(frames, dtype=np.float32)
+  if frames.ndim != 2:
+    raise ValueError(f'Expected 2D frames, got shape={frames.shape}')
+  # Some loaders return (time, neurons) while this code expects (neurons, time).
+  if frames.shape[0] != 700 and frames.shape[1] == 700:
+    frames = frames.T
+  return frames
+
+
+def _bin_frames(frames, n_bins):
+  binned_len = frames.shape[1] // n_bins
+  binned_frames = np.zeros((frames.shape[0], binned_len), dtype=np.float32)
+  for i in range(binned_len):
+    binned_frames[:, i] = frames[:, n_bins * i: n_bins * (i + 1)].sum(axis=1)
+  return binned_frames
 
 
 def SHD_dataloaders(config):
@@ -276,6 +297,15 @@ class BinnedSpikingHeidelbergDigits(SpikingHeidelbergDigits):
         self.transform = getattr(self, 'transform', transform)
         self.target_transform = getattr(self, 'target_transform', target_transform)
 
+    @classmethod
+    def create_raw_from_extracted(cls, extract_root: Path, raw_root: Path):
+        # Use absolute targets to avoid relative-symlink breakage on some hosts.
+        for f in Path(extract_root).iterdir():
+            target = Path(raw_root) / f.name
+            if target.exists():
+                continue
+            target.symlink_to(f.resolve())
+
     def __getitem__(self, i: int):
         if self.data_type == 'event':
             events = {'t': self.h5_file['spikes']['times'][i], 'x': self.h5_file['spikes']['units'][i]}
@@ -288,18 +318,24 @@ class BinnedSpikingHeidelbergDigits(SpikingHeidelbergDigits):
             return events, label
 
         elif self.data_type == 'frame':
-            frames = np.load(self.frames_path[i], allow_pickle=True)['frames'].astype(np.float32)
-            label = self.frames_label[i]
+            local_fields_ok = hasattr(self, 'frames_path') and hasattr(self, 'frames_label')
+            if local_fields_ok:
+                frames = np.load(self.frames_path[i], allow_pickle=True)['frames'].astype(np.float32)
+                label = self.frames_label[i]
+                apply_local_transform = True
+            else:
+                # Newer SpikingJelly revisions changed internal frame bookkeeping.
+                frames, label = super().__getitem__(i)
+                apply_local_transform = False
 
-            binned_len = frames.shape[1]//self.n_bins
-            binned_frames = np.zeros((frames.shape[0], binned_len))
-            for i in range(binned_len):
-                binned_frames[:,i] = frames[:, self.n_bins*i : self.n_bins*(i+1)].sum(axis=1)
+            frames = _to_numpy_frames(frames)
+            binned_frames = _bin_frames(frames, self.n_bins)
 
-            if self.transform is not None:
-                binned_frames = self.transform(binned_frames)
-            if self.target_transform is not None:
-                label = self.target_transform(label)
+            if apply_local_transform:
+                if self.transform is not None:
+                    binned_frames = self.transform(binned_frames)
+                if self.target_transform is not None:
+                    label = self.target_transform(label)
 
             return binned_frames, label
 
@@ -360,6 +396,15 @@ if SpikingSpeechCommands is not None:
                 ('ssc_test.h5.zip', 'https://zenkelab.org/datasets/ssc_test.h5.zip', 'a35ff1e9cffdd02a20eb850c17c37748'),
             ]
 
+        @classmethod
+        def create_raw_from_extracted(cls, extract_root: Path, raw_root: Path):
+            # Use absolute targets to avoid relative-symlink breakage on some hosts.
+            for f in Path(extract_root).iterdir():
+                target = Path(raw_root) / f.name
+                if target.exists():
+                    continue
+                target.symlink_to(f.resolve())
+
         def __getitem__(self, i: int):
             if self.data_type == 'event':
                 events = {'t': self.h5_file['spikes']['times'][i], 'x': self.h5_file['spikes']['units'][i]}
@@ -372,18 +417,24 @@ if SpikingSpeechCommands is not None:
                 return events, label
 
             elif self.data_type == 'frame':
-                frames = np.load(self.frames_path[i], allow_pickle=True)['frames'].astype(np.float32)
-                label = self.frames_label[i]
+                local_fields_ok = hasattr(self, 'frames_path') and hasattr(self, 'frames_label')
+                if local_fields_ok:
+                    frames = np.load(self.frames_path[i], allow_pickle=True)['frames'].astype(np.float32)
+                    label = self.frames_label[i]
+                    apply_local_transform = True
+                else:
+                    # Newer SpikingJelly revisions changed internal frame bookkeeping.
+                    frames, label = super().__getitem__(i)
+                    apply_local_transform = False
 
-                binned_len = frames.shape[1]//self.n_bins
-                binned_frames = np.zeros((frames.shape[0], binned_len))
-                for i in range(binned_len):
-                    binned_frames[:,i] = frames[:, self.n_bins*i : self.n_bins*(i+1)].sum(axis=1)
+                frames = _to_numpy_frames(frames)
+                binned_frames = _bin_frames(frames, self.n_bins)
 
-                if self.transform is not None:
-                    binned_frames = self.transform(binned_frames)
-                if self.target_transform is not None:
-                    label = self.target_transform(label)
+                if apply_local_transform:
+                    if self.transform is not None:
+                        binned_frames = self.transform(binned_frames)
+                    if self.target_transform is not None:
+                        label = self.target_transform(label)
 
                 return binned_frames, label
 else:
