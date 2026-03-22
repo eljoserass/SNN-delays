@@ -324,6 +324,9 @@ class Model(nn.Module):
                 model_logs = self.get_model_wandb_logs()
 
                 wandb_logs.update(model_logs)
+                from delay_dropout import all_layer_delay_stats
+                if self.config.model_type == 'snn_delays':
+                    wandb_logs.update(all_layer_delay_stats(self.blocks))
 
                 if self.config.model_type == 'snn_delays':
                     wandb_logs.update(pos_logs)
