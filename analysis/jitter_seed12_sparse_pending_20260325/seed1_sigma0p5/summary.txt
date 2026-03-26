@@ -1,0 +1,10 @@
+baseline_ckpt=Seed0Matrix||seed=0||snn_delays||ssc||10ms||bins=5||sigma_drop=0||sparsity_p=0.96_Best_ACC.pt
+candidate_ckpt=DelayDropSSC||seed=1||snn_delays||ssc||10ms||bins=5||sigma_drop=0.5||sparsity_p=0.96_Best_ACC.pt
+baseline_auc=0.36931754
+candidate_auc=0.38620057
+delta_auc_candidate_minus_baseline=0.01688303
+sigma=0.0000 baseline=0.370768+-0.000000 candidate=0.375576+-0.000000
+sigma=0.0500 baseline=0.372535+-0.001406 candidate=0.380306+-0.003222
+sigma=0.1000 baseline=0.371867+-0.003344 candidate=0.386459+-0.001361
+sigma=0.2500 baseline=0.370376+-0.004136 candidate=0.389638+-0.003132
+sigma=0.5000 baseline=0.364007+-0.003587 candidate=0.384977+-0.003616

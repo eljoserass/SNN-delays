@@ -1,6 +1,6 @@
 # Delay Dropout Experiment Status (SSC/SHD)
 
-Last updated: 2026-03-22 19:50 UTC
+Last updated: 2026-03-24 22:56 UTC
 
 ## 1) What we are testing
 We are testing **delay dropout** in `snn_delays` by adding Gaussian noise to learned delay positions `P` during training:
@@ -89,35 +89,44 @@ W&B logging remains comparison-style per candidate run (`jitter_acc_baseline`, `
 3. SHD instability/flat behavior likely tied to SpikingJelly version + cached preprocessing outputs.
 
 ## 8) Current status (live snapshot)
-- Seed-0 sparse small-sigma runs are complete and analyzed.
-- Seed-1 and seed-2 sparse small-sigma sweeps are currently running on two GPU machines.
-- CPU machine is set up for jitter evaluations, with cached baseline workflow available.
+Live check at `2026-03-24 22:55 UTC`:
 
-Live check at `2026-03-22 19:48 UTC`:
-
-- `213.173.110.196` (`seed=1`, sparse `sparsity_p=0.96`, current `sigma_drop=0.05`)
-  - last logged epoch: `130/149`
-  - last test acc: `37.20%`
-  - best test acc so far in this run: `37.20%`
-  - run log mtime: `2026-03-22 19:48:38 UTC`
-- `213.173.109.6` (`seed=2`, sparse `sparsity_p=0.96`, current `sigma_drop=0.05`)
-  - last logged epoch: `120/149`
-  - last test acc: `35.62%`
-  - best test acc so far in this run: `35.62%`
-  - run log mtime: `2026-03-22 19:48:38 UTC`
-
-Queue state:
-
-- Both queues are still on `sigma_drop=0.05` for their respective seeds.
-- After completion, each queue should continue automatically with `sigma_drop=0.1`, then `0.25`, then `0.5`.
+- Seed-0 sparse small-sigma (`sigma={0.05,0.1,0.25,0.5}`) is complete and analyzed.
+- `213.173.110.196` (`seed=1`, sparse `sparsity_p=0.96`)
+  - sweep status: complete (`done_count=4`)
+  - `sigma=0.5` final best test acc: `37.52%`
+  - auto-follow baseline started: `sigma=0` now running
+  - baseline current progress: around epoch `9/149`, best test so far `12.09%`
+- `213.173.109.6` (`seed=2`, sparse `sparsity_p=0.96`)
+  - sweep status: still running (`done_count=3`)
+  - current run: `sigma=0.5`
+  - current progress: around epoch `113/149`, best test so far `35.51%`
+  - baseline `sigma=0` not started yet (scheduler waiting for sweep completion)
 
 ## 9) Important artifact paths
-- Training status dirs: `.run_status/delaydrop_ssc_small_sigma_*`
-- Seed-0 sparse jitter outputs:
-  - `analysis/jitter_seed0_sparse_small_sigma/sigma_0p05/summary.txt`
-  - `analysis/jitter_seed0_sparse_small_sigma/sigma_0p1/summary.txt`
-  - `analysis/jitter_seed0_sparse_small_sigma/sigma_0p25/summary.txt`
-  - `analysis/jitter_seed0_sparse_small_sigma/sigma_0p5/summary.txt`
+- Training status dirs:
+  - `.run_status/delaydrop_ssc_small_sigma_seed1_retryvenv`
+  - `.run_status/delaydrop_ssc_small_sigma_seed2_retryvenv`
+  - `.run_status/delaydrop_ssc_baseline_seed1`
+  - `.run_status/delaydrop_ssc_baseline_seed2`
+- Jitter outputs:
+  - `analysis/jitter_seed0_sparse_small_sigma/...`
+  - `analysis/jitter_seed12_sparse_small_sigma/...`
 - Cached jitter scripts:
   - `scripts/eval_jitter_many.py`
   - `scripts/run_jitter_seed0_sparse_small_sigma_cached.sh`
+
+## 10) Pending eval_jitter checklist
+Already completed through jitter:
+- seed0 sparse: `sigma=0.05, 0.1, 0.25, 0.5`
+- seed1 sparse: `sigma=0.05, 0.1, 0.25`
+- seed2 sparse: `sigma=0.05, 0.1`
+
+Ready now (trained, jitter not run yet):
+- seed1 sparse: `sigma=0.5`
+- seed2 sparse: `sigma=0.25`
+
+Blocked on training completion:
+- seed2 sparse: `sigma=0.5` (still training)
+- seed1 sparse: `sigma=0` baseline (running)
+- seed2 sparse: `sigma=0` baseline (queued, starts after seed2 `sigma=0.5`)

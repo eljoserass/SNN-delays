@@ -1,0 +1,13 @@
+variant,dataset,sigma_from_name,sparsity_from_name,n_runs,mean_max_acc_valid,std_max_acc_valid,run_ids
+baseline_delay,shd,0.0,0.96,1,0.3109246399176955,0.0,yo2fbnze
+baseline_no_delay,shd,,,1,0.2748842592592593,0.0,6i5v6k0f
+baseline_no_delay,ssc,,,1,0.1749308775463667,0.0,cpvo56hh
+main_delaydrop,shd,0.5,0.0,2,0.47004404578189296,0.006743505658436233,"x2yok4wb,jshuspn4"
+main_delaydrop,shd,0.5,0.96,3,0.26272612311385457,0.012977599133188604,"js9mvlbn,2pq2vf0e,cy0qnmef"
+main_delaydrop,shd,0.5,,1,0.45121206275720166,0.0,rpdtvkiq
+main_delaydrop,shd,1.0,0.0,3,0.5061996313443073,0.016149862240604402,"i48tj8xk,5wiy1huj,cyohxi6e"
+main_delaydrop,shd,1.0,0.96,3,0.26317086762688613,0.01267052847410998,"hyljkdcm,vr2apdtl,pq1bam7k"
+main_delaydrop,shd,2.0,0.0,3,0.5202599879972565,0.0033975515768170433,"zndz9cyr,inc8vtmv,tmb134nw"
+main_delaydrop,shd,2.0,0.96,3,0.25425990226337447,0.004663017638752272,"3yj8azw3,klvshqq2,kj79trwv"
+main_delaydrop,shd,5.0,0.0,3,0.4663065843621399,0.012951572490556472,"mn3wx4w5,2zvp3i6i,n0uw4dwu"
+main_delaydrop,shd,5.0,0.96,3,0.2373596107681756,0.0019598591272657266,"4ayxucz5,grmho3gg,yupoj848"
