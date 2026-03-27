@@ -1,0 +1,16 @@
+seed,sigma_train,clean_acc,candidate_auc,baseline_auc,delta_auc,source
+0,0.00,0.370768,0.36931754,0.36931754,0.00000000,seed0_baseline_from_seed0_summary
+0,0.05,0.384604,0.38274114,0.36931754,0.01342360,analysis/jitter_seed0_sparse_small_sigma/sigma_0p05/summary.txt
+0,0.10,0.393730,0.39555392,0.36931754,0.02623638,analysis/jitter_seed0_sparse_small_sigma/sigma_0p1/summary.txt
+0,0.25,0.390933,0.39456972,0.36931754,0.02525218,analysis/jitter_seed0_sparse_small_sigma/sigma_0p25/summary.txt
+0,0.50,0.380090,0.39079531,0.36931754,0.02147777,analysis/jitter_seed0_sparse_small_sigma/sigma_0p5/summary.txt
+1,0.00,0.357374,0.36140320,0.36931754,-0.00791434,analysis/jitter_seed12_sparse_pending_20260325/seed1_sigma0/summary.txt
+1,0.05,0.371455,0.36883672,0.36931754,-0.00048082,analysis/jitter_seed12_sparse_small_sigma/seed1_sigma0p05/summary.txt
+1,0.10,0.358846,0.36497154,0.36931754,-0.00434600,analysis/jitter_seed12_sparse_small_sigma/seed1_sigma0p1/summary.txt
+1,0.25,0.360367,0.37198459,0.36931754,0.00266705,analysis/jitter_seed12_sparse_small_sigma/seed1_sigma0p25_rerun/summary.txt
+1,0.50,0.375576,0.38620057,0.36931754,0.01688303,analysis/jitter_seed12_sparse_pending_20260325/seed1_sigma0p5/summary.txt
+2,0.00,0.357669,0.35621823,0.36931754,-0.01309931,analysis/jitter_seed12_sparse_pending_20260325/seed2_sigma0_postfinish_20260325/summary.txt
+2,0.05,0.353547,0.35073153,0.36931754,-0.01858601,analysis/jitter_seed12_sparse_small_sigma/seed2_sigma0p05/summary.txt
+2,0.10,0.352321,0.35287214,0.36931754,-0.01644540,analysis/jitter_seed12_sparse_small_sigma/seed2_sigma0p1/summary.txt
+2,0.25,0.371553,0.37272544,0.36931754,0.00340790,analysis/jitter_seed12_sparse_pending_20260325/seed2_sigma0p25/summary.txt
+2,0.50,0.356393,0.36337209,0.36931754,-0.00594545,analysis/jitter_seed12_sparse_pending_20260325/seed2_sigma0p5/summary.txt
